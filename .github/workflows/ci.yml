@@ -100,6 +100,9 @@ jobs:
             docker pull \
               478982786478.dkr.ecr.ap-south-1.amazonaws.com/deployforge:${{ github.sha }}
 
+            docker network inspect deployforge-monitoring >/dev/null 2>&1 || \
+            docker network create deployforge-monitoring
+
             echo "Stopping old container..."
             docker stop deployforge-api || true
 
@@ -108,10 +111,11 @@ jobs:
 
             echo "Starting new container..."
             docker run -d \
-              --name deployforge-api \
-              -p 8000:8000 \
-              --restart unless-stopped \
-              478982786478.dkr.ecr.ap-south-1.amazonaws.com/deployforge:${{ github.sha }}
+                --name deployforge-api \
+                --network deployforge-monitoring \
+                -p 8000:8000 \
+                --restart unless-stopped \
+                478982786478.dkr.ecr.ap-south-1.amazonaws.com/deployforge:${{ github.sha }}
 
             echo "Waiting for application..."
             sleep 5
