@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
-
 app = FastAPI(
     title="DeployForge",
     description="Employee Operations Management API",
