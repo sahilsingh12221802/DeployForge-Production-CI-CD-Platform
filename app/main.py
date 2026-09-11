@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
 
@@ -7,7 +8,7 @@ app = FastAPI(
     description="Employee Operations Management API",
     version="1.0.0",
 )
-
+Instrumentator().instrument(app).expose(app)
 
 class Employee(BaseModel):
     name: str

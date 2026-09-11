@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "deployforge"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["deployforge:8000"]
