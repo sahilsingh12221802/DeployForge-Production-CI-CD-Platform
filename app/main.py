@@ -5,7 +5,7 @@ from pydantic import BaseModel
 app = FastAPI(
     title="DeployForge",
     description="Employee Operations Management API",
-    version="1.0.0",
+    version="1.0.1",
 )
 Instrumentator().instrument(app).expose(app)
 
