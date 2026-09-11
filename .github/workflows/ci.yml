@@ -44,16 +44,6 @@ jobs:
         run: |
           docker build -t deployforge:${{ github.sha }} .
 
-      - name: Debug OIDC claims
-        run: |
-          TOKEN_JSON=$(curl -s \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
-
-          ID_TOKEN=$(echo "$TOKEN_JSON" | jq -r .value)
-
-          echo "$ID_TOKEN" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq .
-
       - name: Configure AWS credentials
         if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v5
@@ -83,3 +73,50 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push ${REGISTRY}/${REPOSITORY}:${IMAGE_TAG}
+
+
+  deploy:
+    name: Deploy to EC2
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "Logging in to Amazon ECR..."
+            aws ecr get-login-password --region ap-south-1 | \
+              docker login --username AWS --password-stdin \
+              478982786478.dkr.ecr.ap-south-1.amazonaws.com
+
+            echo "Pulling new DeployForge image..."
+            docker pull \
+              478982786478.dkr.ecr.ap-south-1.amazonaws.com/deployforge:${{ github.sha }}
+
+            echo "Stopping old container..."
+            docker stop deployforge-api || true
+
+            echo "Removing old container..."
+            docker rm deployforge-api || true
+
+            echo "Starting new container..."
+            docker run -d \
+              --name deployforge-api \
+              -p 8000:8000 \
+              --restart unless-stopped \
+              478982786478.dkr.ecr.ap-south-1.amazonaws.com/deployforge:${{ github.sha }}
+
+            echo "Waiting for application..."
+            sleep 5
+
+            echo "Checking application health..."
+            curl --fail http://localhost:8000/health
+
+            echo "Deployment successful!"
